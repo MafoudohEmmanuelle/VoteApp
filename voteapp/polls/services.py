@@ -56,7 +56,8 @@ def add_allowed_tokens_to_poll(poll: Poll, tokens: list[str]):
     Store allowed voter tokens in Redis for restricted polls.
     """
 
-    if poll.voting_mode != Poll.VotingMode.RESTRICTED:
+    # The model stores voting_mode as a string ('open'|'restricted')
+    if poll.voting_mode != "restricted":
         raise ValueError("Poll is not restricted")
 
     # Redis keys MUST match voting logic → use public_id
