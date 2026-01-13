@@ -35,6 +35,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"password": "Passwords must match"}
             )
+        # username/email uniqueness validations
+        if User.objects.filter(username=data.get("username")).exists():
+            raise serializers.ValidationError({"username": "A user with that username already exists."})
+
+        if data.get("email") and User.objects.filter(email=data.get("email")).exists():
+            raise serializers.ValidationError({"email": "A user with that email already exists."})
+
         return data
 
     def create(self, validated_data):

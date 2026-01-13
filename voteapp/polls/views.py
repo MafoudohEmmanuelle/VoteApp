@@ -13,7 +13,7 @@ from polls.serializers import (
     UserSerializer
 )
 from polls.services import generate_voter_tokens, finalize_poll_results
-from polls.redis_votes import store_allowed_tokens, cast_vote
+from polls.redis_votes import store_allowed_tokens, cast_vote, get_poll_results
 from django.utils import timezone
 
 # -----------------------------
@@ -105,6 +105,7 @@ class PollDetailView(generics.RetrieveAPIView):
     queryset = Poll.objects.all()
     serializer_class = PollSerializer
     permission_classes = [AllowAny]
+    lookup_field = "public_id"
 
 
 class GenerateVoterTokensView(APIView):
@@ -114,24 +115,24 @@ class GenerateVoterTokensView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, poll_id):
+    def post(self, request, poll_public_id):
         count = request.data.get("count")
         if not count or int(count) <= 0:
             return Response({"error": "Valid token count required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        poll = Poll.objects.get(id=poll_id)
+        poll = Poll.objects.get(public_id=poll_public_id)
         if poll.created_by != request.user:
             return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
         if poll.voting_mode != "restricted":
             return Response({"error": "Poll is not in restricted mode"}, status=status.HTTP_400_BAD_REQUEST)
 
         tokens = generate_voter_tokens(int(count))
-        store_allowed_tokens(poll_id, tokens)
+        store_allowed_tokens(poll.public_id, tokens)
 
         # Return the link for voters
-        poll_link = f"/vote/{poll_id}/"  # Frontend can use this link
+        poll_link = f"/vote/{poll.public_id}/"  # Frontend can use this link
         return Response({
-            "poll_id": poll_id,
+            "poll_public_id": str(poll.public_id),
             "poll_link": poll_link,
             "tokens": tokens,
             "message": "Tokens generated successfully"
@@ -143,8 +144,8 @@ class VoteView(APIView):
     Cast a vote using a token (anonymous or restricted).
     Live results are automatically broadcasted via WebSocket.
     """
-    def post(self, request, poll_id):
-        poll = Poll.objects.get(id=poll_id)
+    def post(self, request, poll_public_id):
+        poll = Poll.objects.get(public_id=poll_public_id)
         poll.update_status()
 
         if not poll.is_open():
@@ -153,15 +154,23 @@ class VoteView(APIView):
         choice_id = request.data.get("choice_id")
         voter_token = request.data.get("voter_token")
 
-        if not choice_id or not voter_token:
-            return Response({"error": "choice_id and voter_token required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not choice_id:
+            return Response({"error": "choice_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Allow authenticated users to vote without supplying a token
+        if not voter_token:
+            if request.user and request.user.is_authenticated:
+                voter_token = f"user:{request.user.id}"
+            else:
+                return Response({"error": "voter_token is required for anonymous users"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            cast_vote(poll_id, choice_id, voter_token)
+            cast_vote(poll.public_id, int(choice_id), voter_token)
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({"message": "Vote recorded"}, status=status.HTTP_200_OK)
+        results = get_poll_results(poll.public_id)
+        return Response({"message": "Vote recorded", "results": results}, status=status.HTTP_200_OK)
 
 
 class FinalizePollView(APIView):
@@ -171,8 +180,8 @@ class FinalizePollView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, poll_id):
-        poll = Poll.objects.get(id=poll_id)
+    def post(self, request, poll_public_id):
+        poll = Poll.objects.get(public_id=poll_public_id)
         if poll.created_by != request.user:
             return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 
