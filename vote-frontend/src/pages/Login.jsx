@@ -8,8 +8,12 @@ export default function Login() {
 
   const submit = async (e) => {
     e.preventDefault();
-    await loginUser(form);
-    navigate("/");
+    try {
+      await loginUser(form);
+      navigate("/");
+    } catch (err) {
+      alert("Invalid credentials");
+    }
   };
 
   return (

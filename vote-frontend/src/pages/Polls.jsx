@@ -12,6 +12,7 @@ export default function Polls() {
   return (
     <div className="page">
       <h2>Available Polls</h2>
+      {polls.length === 0 && <p>No polls yet</p>}
       {polls.map(p => <PollCard key={p.id} poll={p} />)}
     </div>
   );

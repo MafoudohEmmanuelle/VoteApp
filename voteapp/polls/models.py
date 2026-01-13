@@ -24,7 +24,7 @@ class Poll(models.Model):
 
     # Public identifier for shareable link
     public_id = models.UUIDField(
-        default=uuid.uuid4,
+        default=uuid.uuid4(),
         unique=True,
         editable=False
     )
