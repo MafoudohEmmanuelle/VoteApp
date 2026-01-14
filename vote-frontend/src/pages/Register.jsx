@@ -1,9 +1,10 @@
+// pages/Register.jsx
 import { useState } from "react";
 import { registerUser } from "../api/auth";
 import { useNavigate } from "react-router-dom";
 
 export default function Register() {
-  const [form, setForm] = useState({});
+  const [form, setForm] = useState({ username: "", password: "" });
   const navigate = useNavigate();
 
   const submit = async (e) => {
@@ -12,7 +13,7 @@ export default function Register() {
       await registerUser(form);
       navigate("/login");
     } catch (err) {
-      alert("Error registering user");
+      alert(err.response?.data?.error || "Registration failed");
     }
   };
 
@@ -20,16 +21,25 @@ export default function Register() {
     <div className="page">
       <form className="form" onSubmit={submit}>
         <h2>Register</h2>
-        {["username","email","first_name","last_name","password","password2"].map(f => (
-          <div className="form-group" key={f}>
-            <label>{f}</label>
-            <input
-              type={f.includes("password") ? "password" : "text"}
-              onChange={e => setForm({...form, [f]: e.target.value})}
-            />
-          </div>
-        ))}
-        <button className="btn">Register</button>
+
+        <div className="form-group">
+          <label>Username</label>
+          <input
+            value={form.username}
+            onChange={e => setForm({ ...form, username: e.target.value })}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            value={form.password}
+            onChange={e => setForm({ ...form, password: e.target.value })}
+          />
+        </div>
+
+        <button className="btn">Create account</button>
       </form>
     </div>
   );

@@ -5,11 +5,6 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 
 class Poll(models.Model):
-    """
-    Poll aggregate root.
-    Redis stores votes; Django ensures poll integrity and lifecycle.
-    """
-
     STATUS_CHOICES = [
         ("draft", "Draft"),
         ("scheduled", "Scheduled"),
@@ -22,9 +17,8 @@ class Poll(models.Model):
         ("restricted", "Restricted voting"),
     ]
 
-    # Public identifier for shareable link
     public_id = models.UUIDField(
-        default=uuid.uuid4(),
+        default=uuid.uuid4,  # callable, not uuid.uuid4()
         unique=True,
         editable=False
     )
@@ -64,44 +58,33 @@ class Poll(models.Model):
         return self.title
 
     def clean(self):
-        """
-        Validate poll scheduling rules.
-        """
         if self.starts_at >= self.ends_at:
             raise ValidationError("Poll end time must be after start time")
 
-    def update_status(self):
-        """
-        Update poll status based on current time.
-        This method MUST be called before voting or displaying status.
-        """
+    def compute_status(self):
         now = timezone.now()
-
         if self.starts_at <= now < self.ends_at:
-            self.status = "open"
+            return "open"
         elif now >= self.ends_at:
-            self.status = "closed"
+            return "closed"
         else:
-            self.status = "scheduled"
+            return "scheduled"
 
-        self.save(update_fields=["status"])
-    
+    def update_status(self):
+        new_status = self.compute_status()
+        if new_status != self.status:
+            self.status = new_status
+            self.save(update_fields=["status"])
+
     def is_open(self):
-        """
-        Authoritative check for voting availability.
-        """
-        return self.status == "open"
+        return self.compute_status() == "open"
 
 class Choice(models.Model):
-    """
-    Voting option belonging to a Poll.
-    """
     poll = models.ForeignKey(
         Poll,
         on_delete=models.CASCADE,
         related_name="choices"
     )
-
     text = models.CharField(max_length=255)
     order = models.PositiveIntegerField(default=0)
 
@@ -112,23 +95,14 @@ class Choice(models.Model):
         return f"{self.text} (Poll: {self.poll.title})"
 
 class PollResult(models.Model):
-    """
-    Stores finalized poll results after closure.
-    Redis → Django persistence boundary.
-    """
-
     poll = models.OneToOneField(
         Poll,
         on_delete=models.CASCADE,
         related_name="result"
     )
-
-    # Example:
-    # { "1": 45, "2": 30 }
+    # { "choice_id": count }
     results = models.JSONField()
-
     total_votes = models.PositiveIntegerField()
-
     finalized_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

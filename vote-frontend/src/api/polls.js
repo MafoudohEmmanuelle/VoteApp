@@ -3,15 +3,13 @@ import { getAuthHeader } from "./auth";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
-// ---------------- POLLS ----------------
-
 export async function fetchPolls() {
   const res = await axios.get(`${API_URL}/polls/`);
   return res.data;
 }
 
-export async function fetchPoll(id) {
-  const res = await axios.get(`${API_URL}/polls/${id}/`);
+export async function fetchPoll(publicId) {
+  const res = await axios.get(`${API_URL}/polls/${publicId}/`);
   return res.data;
 }
 
@@ -38,3 +36,13 @@ export async function generateTokens(pollId, count) {
   );
   return res.data.tokens;
 }
+
+export async function finalizePoll(pollId) {
+  const res = await axios.post(
+    `${API_URL}/polls/${pollId}/finalize/`,
+    {},
+    { headers: getAuthHeader() }
+  );
+  return res.data;
+}
+

@@ -1,9 +1,11 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, status
 from rest_framework.views import APIView
 from django.contrib.auth import authenticate
-from rest_framework.response import Response 
+from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.shortcuts import get_object_or_404
+
 from polls.models import Poll
 from polls.serializers import (
     PollSerializer,
@@ -14,7 +16,7 @@ from polls.serializers import (
 )
 from polls.services import generate_voter_tokens, finalize_poll_results
 from polls.redis_votes import store_allowed_tokens, cast_vote, get_poll_results
-from django.utils import timezone
+
 
 # -----------------------------
 # Authentication Views
@@ -66,10 +68,7 @@ class LoginView(generics.GenericAPIView):
 
 
 class LogoutView(APIView):
-    """
-    JWT logout is handled client-side by deleting tokens.
-    """
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
@@ -95,10 +94,11 @@ class PollListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        public_qs = Poll.objects.filter(is_public=True)
         if user.is_authenticated:
-            return Poll.objects.filter(is_public=True) | Poll.objects.filter(created_by=user)
-        else:
-            return Poll.objects.filter(is_public=True)
+            own_qs = Poll.objects.filter(created_by=user)
+            return public_qs.union(own_qs)
+        return public_qs
 
 
 class PollDetailView(generics.RetrieveAPIView):
@@ -109,28 +109,28 @@ class PollDetailView(generics.RetrieveAPIView):
 
 
 class GenerateVoterTokensView(APIView):
-    """
-    Generate voter tokens for restricted polls.
-    Only the poll creator can generate and share tokens manually.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, poll_public_id):
         count = request.data.get("count")
-        if not count or int(count) <= 0:
+        try:
+            count = int(count)
+        except (TypeError, ValueError):
+            return Response({"error": "Valid token count required"}, status=status.HTTP_400_BAD_REQUEST)
+        if count <= 0:
             return Response({"error": "Valid token count required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        poll = Poll.objects.get(public_id=poll_public_id)
+        poll = get_object_or_404(Poll, public_id=poll_public_id)
+
         if poll.created_by != request.user:
             return Response({"error": "Not allowed"}, status=status.HTTP_403_FORBIDDEN)
         if poll.voting_mode != "restricted":
             return Response({"error": "Poll is not in restricted mode"}, status=status.HTTP_400_BAD_REQUEST)
 
-        tokens = generate_voter_tokens(int(count))
+        tokens = generate_voter_tokens(count)
         store_allowed_tokens(poll.public_id, tokens)
 
-        # Return the link for voters
-        poll_link = f"/vote/{poll.public_id}/"  # Frontend can use this link
+        poll_link = f"/vote/{poll.public_id}/"
         return Response({
             "poll_public_id": str(poll.public_id),
             "poll_link": poll_link,
@@ -140,12 +140,10 @@ class GenerateVoterTokensView(APIView):
 
 
 class VoteView(APIView):
-    """
-    Cast a vote using a token (anonymous or restricted).
-    Live results are automatically broadcasted via WebSocket.
-    """
+    permission_classes = [AllowAny]
+
     def post(self, request, poll_public_id):
-        poll = Poll.objects.get(public_id=poll_public_id)
+        poll = get_object_or_404(Poll, public_id=poll_public_id)
         poll.update_status()
 
         if not poll.is_open():
@@ -154,10 +152,9 @@ class VoteView(APIView):
         choice_id = request.data.get("choice_id")
         voter_token = request.data.get("voter_token")
 
-        if not choice_id:
+        if choice_id is None:
             return Response({"error": "choice_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Allow authenticated users to vote without supplying a token
         if not voter_token:
             if request.user and request.user.is_authenticated:
                 voter_token = f"user:{request.user.id}"
@@ -174,14 +171,11 @@ class VoteView(APIView):
 
 
 class FinalizePollView(APIView):
-    """
-    Finalize a poll and store the results in the database.
-    Only the poll creator can finalize, and only after the poll is closed.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, poll_public_id):
-        poll = Poll.objects.get(public_id=poll_public_id)
+        poll = get_object_or_404(Poll, public_id=poll_public_id)
+
         if poll.created_by != request.user:
             return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
 

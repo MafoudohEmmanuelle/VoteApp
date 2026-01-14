@@ -1,33 +1,44 @@
+// components/PollForm.jsx
 import { useState } from "react";
-import { createPoll } from "../api/polls";
+import { createPoll, generateTokens } from "../api/polls";
 
 export default function PollForm({ onPollCreated }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [votingMode, setVotingMode] = useState("public");
+  const [votingMode, setVotingMode] = useState("open");
   const [choices, setChoices] = useState(["", ""]);
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [tokens, setTokens] = useState([]);
+  const [tokenCount, setTokenCount] = useState(10);
 
   const handleAddChoice = () => setChoices([...choices, ""]);
 
   const handleChoiceChange = (index, value) => {
-    const newChoices = [...choices];
-    newChoices[index] = value;
-    setChoices(newChoices);
+    const copy = [...choices];
+    copy[index] = value;
+    setChoices(copy);
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const pollData = { title, description, voting_mode: votingMode, choices };
-      const res = await createPoll(pollData);
 
-      // If restricted, show tokens
-      if (votingMode === "restricted" && res.tokens) {
-        setTokens(res.tokens);
+    try {
+      const poll = await createPoll({
+        title,
+        description,
+        voting_mode: votingMode,
+        starts_at: startsAt,
+        ends_at: endsAt,
+        choices: choices.map((c, i) => ({ text: c, order: i }))
+      });
+
+      if (votingMode === "restricted") {
+        const generated = await generateTokens(poll.public_id, tokenCount);
+        setTokens(generated);
       }
 
-      onPollCreated?.(res);
+      onPollCreated?.(poll);
     } catch (err) {
       alert(err.response?.data?.error || "Error creating poll");
     }
@@ -36,48 +47,42 @@ export default function PollForm({ onPollCreated }) {
   return (
     <div className="form">
       <h2>Create Poll</h2>
-      <div className="form-group">
-        <label>Title</label>
-        <input value={title} onChange={e => setTitle(e.target.value)} />
-      </div>
 
-      <div className="form-group">
-        <label>Description</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} />
-      </div>
+      <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} />
+      <input placeholder="Description" value={description} onChange={e => setDescription(e.target.value)} />
 
-      <div className="form-group">
-        <label>Voting Mode</label>
-        <select value={votingMode} onChange={e => setVotingMode(e.target.value)}>
-          <option value="public">Public</option>
-          <option value="restricted">Restricted</option>
-        </select>
-      </div>
+      <select value={votingMode} onChange={e => setVotingMode(e.target.value)}>
+        <option value="open">Open</option>
+        <option value="restricted">Restricted</option>
+      </select>
 
-      <div>
-        <label>Choices</label>
-        {choices.map((c, i) => (
-          <input
-            key={i}
-            value={c}
-            onChange={e => handleChoiceChange(i, e.target.value)}
-            style={{ display: "block", marginBottom: "0.5rem" }}
-          />
-        ))}
-        <button className="btn-secondary" type="button" onClick={handleAddChoice}>
-          Add Choice
-        </button>
-      </div>
+      {votingMode === "restricted" && (
+        <input
+          type="number"
+          min="1"
+          value={tokenCount}
+          onChange={e => setTokenCount(e.target.value)}
+          placeholder="Number of tokens"
+        />
+      )}
 
-      <button className="btn" onClick={handleSubmit}>
-        Create Poll
-      </button>
+      {choices.map((c, i) => (
+        <input
+          key={i}
+          value={c}
+          onChange={e => handleChoiceChange(i, e.target.value)}
+          placeholder={`Choice ${i + 1}`}
+        />
+      ))}
+
+      <button type="button" onClick={handleAddChoice}>Add choice</button>
+      <button className="btn" onClick={handleSubmit}>Create Poll</button>
 
       {tokens.length > 0 && (
-        <div style={{ marginTop: "1rem" }}>
-          <h3>Generated Tokens (copy them!)</h3>
-          <textarea readOnly style={{ width: "100%", minHeight: "3rem" }} value={tokens.join("\n")} />
-        </div>
+        <>
+          <h3>Generated Tokens</h3>
+          <textarea readOnly value={tokens.join("\n")} />
+        </>
       )}
     </div>
   );

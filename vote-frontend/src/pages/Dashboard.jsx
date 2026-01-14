@@ -1,5 +1,6 @@
+// pages/Dashboard.jsx
 import { useEffect, useState } from "react";
-import { fetchUserPolls } from "../api/polls";
+import { fetchPolls } from "../api/polls";
 import PollCard from "../components/PollCard";
 import { useNavigate } from "react-router-dom";
 
@@ -8,7 +9,9 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchUserPolls().then(setPolls);
+    fetchPolls()
+      .then(setPolls)
+      .catch(() => setPolls([]));
   }, []);
 
   return (
@@ -22,7 +25,9 @@ export default function Dashboard() {
       {polls.length === 0 ? (
         <p>You have not created any polls yet.</p>
       ) : (
-        polls.map(poll => <PollCard key={poll.id} poll={poll} />)
+        polls.map(poll => (
+          <PollCard key={poll.public_id} poll={poll} />
+        ))
       )}
     </div>
   );

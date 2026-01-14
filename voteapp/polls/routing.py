@@ -1,6 +1,6 @@
-from django.urls import path
+from django.urls import re_path
 from .consumers import LiveResultsConsumer
 
 websocket_urlpatterns = [
-    path("ws/polls/<uuid:poll_id>/", LiveResultsConsumer.as_asgi()),
+    re_path(r"^ws/polls/(?P<poll_id>[0-9a-f-]+)/$", LiveResultsConsumer.as_asgi()),
 ]

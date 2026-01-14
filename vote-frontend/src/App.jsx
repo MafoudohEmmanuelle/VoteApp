@@ -1,33 +1,31 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Polls from "./pages/Polls";
 import CreatePoll from "./pages/CreatePoll";
-import Vote from "./pages/Vote";
-import { getCurrentUser } from "./api/auth";
-
-function PrivateRoute({ children }) {
-  const user = getCurrentUser();
-  return user ? children : <Navigate to="/login" />;
-}
+import PollDetail from "./pages/PollDetail";
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <div className="app">
         <Navbar />
         <Routes>
-          <Route path="/" element={<Polls />} />
+          {/* Dashboard (default route) */}
+          <Route path="/" element={<Dashboard />} />
+
+          {/* Authentication */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route
-            path="/create"
-            element={<PrivateRoute><CreatePoll /></PrivateRoute>}
-          />
-          <Route path="/vote/:pollId" element={<Vote />} />
+
+          {/* Poll creation */}
+          <Route path="/create" element={<CreatePoll />} />
+
+          {/* Poll detail & voting */}
+          <Route path="/poll/:pollId" element={<PollDetail />} />
         </Routes>
       </div>
-    </BrowserRouter>
+    </Router>
   );
 }

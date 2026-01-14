@@ -12,21 +12,10 @@ export default function PollCard({ poll }) {
 
       <button
         className="btn btn-secondary"
-        onClick={() => navigate(`/poll/${poll.id}`)}
+        onClick={() => navigate(`/poll/${poll.public_id}`)}
       >
         View Details
       </button>
-
-      {poll.voting_mode === "restricted" && poll.tokens?.length > 0 && (
-        <div style={{ marginTop: "0.5rem" }}>
-          <p>Tokens:</p>
-          <textarea
-            readOnly
-            style={{ width: "100%", minHeight: "3rem" }}
-            value={poll.tokens.join("\n")}
-          />
-        </div>
-      )}
     </div>
   );
 }

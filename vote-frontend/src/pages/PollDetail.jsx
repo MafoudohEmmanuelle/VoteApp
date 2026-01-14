@@ -1,39 +1,45 @@
+// pages/PollDetail.jsx
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { fetchPoll, vote } from "../api/polls";
 import { connectToPollSocket } from "../api/socket";
 import LiveResults from "../components/LiveResults";
 
-export default function Vote() {
+export default function PollDetail() {
   const { pollId } = useParams();
   const [poll, setPoll] = useState(null);
   const [token, setToken] = useState("");
   const [results, setResults] = useState({});
 
   useEffect(() => {
-    fetchPoll(pollId).then(setPoll);
+    fetchPoll(pollId).then(data => {
+      setPoll(data);
+      setResults(data.results || {});
+    });
 
-    const socket = connectToPollSocket(pollId, data => {
-      setResults(data.votes || {});
+    const socket = connectToPollSocket(pollId, msg => {
+      if (msg.votes) setResults(msg.votes);
     });
 
     return () => socket.close();
   }, [pollId]);
 
-  if (!poll) return null;
+  if (!poll) return <p>Loading...</p>;
 
   const handleVote = async (choiceId) => {
     try {
-      await vote(poll.id, choiceId, token);
+      await vote(poll.public_id, choiceId, token);
       alert("Vote recorded");
     } catch (err) {
-      alert(err.response?.data?.error || "Error voting");
+      alert(err.response?.data?.error || "Voting failed");
     }
   };
 
   return (
     <div className="page">
       <h2>{poll.title}</h2>
+      <p>{poll.description}</p>
+
       {poll.voting_mode === "restricted" && (
         <input
           placeholder="Voter token"
@@ -43,12 +49,11 @@ export default function Vote() {
       )}
 
       {poll.choices.map(c => (
-        <button key={c.id} className="btn" onClick={() => handleVote(c.id)}>
+        <button key={c.id} onClick={() => handleVote(c.id)} className="btn">
           {c.text}
         </button>
       ))}
 
-      <h3>Live Results</h3>
       <LiveResults choices={poll.choices} results={results} />
     </div>
   );

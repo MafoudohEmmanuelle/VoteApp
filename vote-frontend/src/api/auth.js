@@ -1,11 +1,10 @@
+// api/auth.js
 import axios from "axios";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
-// ---------------- JWT AUTH ----------------
-
 export async function loginUser(data) {
-  const res = await axios.post(`${API_URL}/login/`, data);
+  const res = await axios.post(`${API_URL}/auth/login/`, data);
   localStorage.setItem("access", res.data.access);
   localStorage.setItem("refresh", res.data.refresh);
   localStorage.setItem("user", JSON.stringify(res.data.user));
@@ -13,12 +12,18 @@ export async function loginUser(data) {
 }
 
 export async function registerUser(data) {
-  const res = await axios.post(`${API_URL}/register/`, data);
+  const res = await axios.post(`${API_URL}/auth/register/`, data);
   return res.data;
 }
 
-export function logoutUser() {
-  localStorage.clear();
+export async function logoutUser() {
+  try {
+    await axios.post(`${API_URL}/auth/logout/`, {}, {
+      headers: getAuthHeader()
+    });
+  } finally {
+    localStorage.clear();
+  }
 }
 
 export function getAuthHeader() {
@@ -27,5 +32,6 @@ export function getAuthHeader() {
 }
 
 export function getCurrentUser() {
-  return JSON.parse(localStorage.getItem("user"));
+  const user = localStorage.getItem("user");
+  return user ? JSON.parse(user) : null;
 }

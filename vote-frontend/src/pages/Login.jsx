@@ -23,12 +23,19 @@ export default function Login() {
 
         <div className="form-group">
           <label>Username</label>
-          <input onChange={e => setForm({...form, username: e.target.value})} />
+          <input
+            value={form.username}
+            onChange={e => setForm({ ...form, username: e.target.value })}
+          />
         </div>
 
         <div className="form-group">
           <label>Password</label>
-          <input type="password" onChange={e => setForm({...form, password: e.target.value})} />
+          <input
+            type="password"
+            value={form.password}
+            onChange={e => setForm({ ...form, password: e.target.value })}
+          />
         </div>
 
         <button className="btn">Login</button>

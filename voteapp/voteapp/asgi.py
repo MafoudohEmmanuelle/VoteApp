@@ -5,7 +5,7 @@ from channels.auth import AuthMiddlewareStack
 
 import polls.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'voteapp.settings')
 
 django_asgi_app = get_asgi_application()
 
@@ -17,3 +17,4 @@ application = ProtocolTypeRouter({
         )
     ),
 })
+
