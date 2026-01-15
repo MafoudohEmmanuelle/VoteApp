@@ -87,6 +87,14 @@ class PollCreateView(generics.CreateAPIView):
         context["request"] = self.request
         return context
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        poll = serializer.save()
+        # Return the full poll data with public_id using PollSerializer
+        response_serializer = PollSerializer(poll, context={'request': request})
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
 
 class PollListView(generics.ListAPIView):
     serializer_class = PollSerializer

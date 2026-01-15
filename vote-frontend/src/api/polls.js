@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getAuthHeader } from "./auth";
+import { getAuthHeader, getAuthHeaderWithRefresh } from "./auth";
 
 const API_URL = "http://127.0.0.1:8000/api";
 
@@ -14,34 +14,40 @@ export async function fetchPoll(publicId) {
 }
 
 export async function createPoll(data) {
+  const headers = await getAuthHeaderWithRefresh();
   const res = await axios.post(`${API_URL}/polls/create/`, data, {
-    headers: getAuthHeader()
+    headers
   });
   return res.data;
 }
 
 export async function vote(pollId, choiceId, voterToken) {
+  // Generate a unique token for open polls if not provided
+  const token = voterToken || `voter_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
   const res = await axios.post(`${API_URL}/polls/${pollId}/vote/`, {
     choice_id: choiceId,
-    voter_token: voterToken
+    voter_token: token
   });
   return res.data;
 }
 
 export async function generateTokens(pollId, count) {
+  const headers = await getAuthHeaderWithRefresh();
   const res = await axios.post(
     `${API_URL}/polls/${pollId}/tokens/`,
     { count },
-    { headers: getAuthHeader() }
+    { headers }
   );
   return res.data.tokens;
 }
 
 export async function finalizePoll(pollId) {
+  const headers = await getAuthHeaderWithRefresh();
   const res = await axios.post(
     `${API_URL}/polls/${pollId}/finalize/`,
     {},
-    { headers: getAuthHeader() }
+    { headers }
   );
   return res.data;
 }

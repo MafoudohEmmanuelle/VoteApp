@@ -1,4 +1,3 @@
-// pages/Dashboard.jsx
 import { useEffect, useState } from "react";
 import { fetchPolls } from "../api/polls";
 import PollCard from "../components/PollCard";
@@ -6,28 +5,41 @@ import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
   const [polls, setPolls] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
+    setLoading(true);
     fetchPolls()
       .then(setPolls)
-      .catch(() => setPolls([]));
+      .catch(() => setPolls([]))
+      .finally(() => setLoading(false));
   }, []);
 
   return (
     <div className="page">
-      <h2>Your Polls</h2>
+      <div className="dashboard-header">
+        <h2>My Polls</h2>
+        <button className="btn btn-primary" onClick={() => navigate("/create")}>
+          ➕ Create New Poll
+        </button>
+      </div>
 
-      <button className="btn" onClick={() => navigate("/create")}>
-        Create Poll
-      </button>
-
-      {polls.length === 0 ? (
-        <p>You have not created any polls yet.</p>
+      {loading ? (
+        <p className="loading">Loading your polls...</p>
+      ) : polls.length === 0 ? (
+        <div className="empty-state">
+          <p>You haven't created any polls yet.</p>
+          <button className="btn" onClick={() => navigate("/create")}>
+            Create Your First Poll
+          </button>
+        </div>
       ) : (
-        polls.map(poll => (
-          <PollCard key={poll.public_id} poll={poll} />
-        ))
+        <div className="polls-grid">
+          {polls.map(poll => (
+            <PollCard key={poll.public_id} poll={poll} />
+          ))}
+        </div>
       )}
     </div>
   );

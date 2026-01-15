@@ -12,16 +12,19 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <h1>VoteApp</h1>
+      <Link to="/" className="navbar-logo">
+        <h1>VoteApp</h1>
+      </Link>
       <div className="navbar-links">
-        <Link to="/">Polls</Link>
-        {user && <Link to="/create">Create Poll</Link>}
-        {!user && <Link to="/login">Login</Link>}
-        {!user && <Link to="/register">Register</Link>}
         {user && (
-          <button className="btn-secondary" onClick={handleLogout}>
-            Logout
-          </button>
+          <>
+            <span className="navbar-user">Welcome, {user.username}!</span>
+            <Link to="/" className="navbar-link">Dashboard</Link>
+            <Link to="/create" className="navbar-link">Create Poll</Link>
+            <button className="btn-logout" onClick={handleLogout}>
+              Logout
+            </button>
+          </>
         )}
       </div>
     </nav>

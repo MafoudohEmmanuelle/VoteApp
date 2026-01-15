@@ -69,6 +69,7 @@ class PollSerializer(serializers.ModelSerializer):
     choices = ChoiceSerializer(many=True, read_only=True)
     is_open = serializers.SerializerMethodField()
     poll_link = serializers.SerializerMethodField()
+    results = serializers.SerializerMethodField()
 
     class Meta:
         model = Poll
@@ -86,6 +87,7 @@ class PollSerializer(serializers.ModelSerializer):
             "status",
             "voting_mode",
             "poll_link",
+            "results",
         ]
 
     def get_is_open(self, obj):
@@ -99,8 +101,14 @@ class PollSerializer(serializers.ModelSerializer):
             return request.build_absolute_uri(path)
         return path
 
+    def get_results(self, obj):
+        from polls.redis_votes import get_poll_results
+        return get_poll_results(obj.public_id)
+
 class PollCreateSerializer(serializers.ModelSerializer):
     choices = ChoiceCreateSerializer(many=True)
+    starts_at = serializers.DateTimeField(required=False, allow_null=True)
+    ends_at = serializers.DateTimeField(required=False, allow_null=True)
 
     class Meta:
         model = Poll
@@ -115,6 +123,16 @@ class PollCreateSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, data):
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        # Set default times if not provided
+        if not data.get("starts_at"):
+            data["starts_at"] = timezone.now()
+        if not data.get("ends_at"):
+            # Default: 1 day from now
+            data["ends_at"] = timezone.now() + timedelta(days=1)
+        
         if data["starts_at"] >= data["ends_at"]:
             raise serializers.ValidationError("Poll end time must be after start time")
 
@@ -127,12 +145,14 @@ class PollCreateSerializer(serializers.ModelSerializer):
         choices_data = validated_data.pop("choices")
         user = self.context["request"].user
 
+        # Create the poll
         poll = Poll.objects.create(
             created_by=user,
-            status="draft",
+            status="open",  # Set initial status
             **validated_data
         )
 
+        # Create choices
         for index, choice_data in enumerate(choices_data):
             Choice.objects.create(
                 poll=poll,
