@@ -4,30 +4,30 @@ A full-stack polling application built with **Django REST Framework** (backend) 
 
 ## Features
 
-✅ **User Authentication**
+**User Authentication**
 - User registration and login with JWT tokens
 - Automatic token refresh (15-min access, 1-day refresh)
 - Secure password handling
 
-✅ **Poll Management**
+**Poll Management**
 - Create polls with multiple choice options
 - Two voting modes: **Open** (anyone can vote) and **Restricted** (token-based access)
 - Set poll start/end times for scheduling
 - Delete polls with cascading Redis cleanup
 
-✅ **Voting System**
+**Voting System**
 - Open polls: Anonymous voting with auto-generated voter tokens
 - Restricted polls: Creator generates tokens for voters
 - Vote deduplication (prevent double voting)
 - Live results updated every 2 seconds
 - Automatic finalization to database when poll closes
 
-✅ **Results & Analytics**
+**Results & Analytics**
 - Real-time vote counts displayed as numbers and percentages
 - Results stored in Redis (fast) and persisted to SQLite (durable)
 - Historical result storage in `PollResult` table
 
-✅ **Architecture**
+**Architecture**
 - **Redis Aggregate Pattern**: Votes aggregated in Redis HASHes per poll
 - **Separation of Concerns**: Transient voting data in Redis, persistent poll metadata in SQLite
 - **Signal-based Finalization**: Auto-saves poll results when poll closes
@@ -224,10 +224,10 @@ This app implements the **Redis Aggregate Pattern** where:
 - **Results** are finalized to SQLite (`PollResult` table) when polls close
 
 This provides:
-- ⚡ Fast vote counting (O(1) increments)
-- 📊 Real-time result aggregation
-- 🔒 Vote deduplication without database overhead
-- 💾 Durable result storage after finalization
+- Fast vote counting (O(1) increments)
+- Real-time result aggregation
+- Vote deduplication without database overhead
+- Durable result storage after finalization
 
 ## Database Schema
 
@@ -317,9 +317,6 @@ python manage.py shell
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
-
-This project is open source and available under the MIT License.
 
 ## Author
 
