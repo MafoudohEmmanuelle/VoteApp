@@ -12,11 +12,15 @@ async function refreshAccessToken() {
       refresh
     });
     
-    localStorage.setItem("access", res.data.access);
-    return true;
+    if (res.data.access) {
+      localStorage.setItem("access", res.data.access);
+      return true;
+    }
+    return false;
   } catch (err) {
-    // Refresh failed, clear tokens
+    // Refresh failed, clear tokens and redirect to login
     localStorage.clear();
+    window.location.href = "/login";
     return false;
   }
 }
@@ -56,18 +60,26 @@ export function getAuthHeader() {
 }
 
 export async function getAuthHeaderWithRefresh() {
-  let token = localStorage.getItem("access");
+  const token = localStorage.getItem("access");
+  const refresh = localStorage.getItem("refresh");
   
-  if (!token) {
+  if (!token || !refresh) {
+    // No tokens, redirect to login
+    window.location.href = "/login";
     return {};
   }
 
   // Try to refresh the token to ensure it's valid
-  await refreshAccessToken();
+  const refreshed = await refreshAccessToken();
   
-  // Get the (potentially refreshed) token
-  token = localStorage.getItem("access");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  if (!refreshed) {
+    // Refresh failed, token cleared and redirected already
+    return {};
+  }
+  
+  // Get the refreshed token
+  const newToken = localStorage.getItem("access");
+  return newToken ? { Authorization: `Bearer ${newToken}` } : {};
 }
 
 export function getCurrentUser() {

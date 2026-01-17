@@ -8,6 +8,16 @@ export async function fetchPolls() {
   return res.data;
 }
 
+export async function fetchUserPolls() {
+  const headers = await getAuthHeaderWithRefresh();
+  const res = await axios.get(`${API_URL}/polls/`, {
+    headers,
+    params: { owner: true }
+  });
+  // Filter to show only polls created by the current user
+  return Array.isArray(res.data) ? res.data : [];
+}
+
 export async function fetchPoll(publicId) {
   const res = await axios.get(`${API_URL}/polls/${publicId}/`);
   return res.data;
@@ -47,6 +57,24 @@ export async function finalizePoll(pollId) {
   const res = await axios.post(
     `${API_URL}/polls/${pollId}/finalize/`,
     {},
+    { headers }
+  );
+  return res.data;
+}
+
+export async function getPollTokens(pollId) {
+  const headers = await getAuthHeaderWithRefresh();
+  const res = await axios.get(
+    `${API_URL}/polls/${pollId}/get-tokens/`,
+    { headers }
+  );
+  return res.data;
+}
+
+export async function deletePoll(pollId) {
+  const headers = await getAuthHeaderWithRefresh();
+  const res = await axios.delete(
+    `${API_URL}/polls/${pollId}/delete/`,
     { headers }
   );
   return res.data;

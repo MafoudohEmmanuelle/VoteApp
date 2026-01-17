@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchPolls } from "../api/polls";
+import { fetchUserPolls } from "../api/polls";
 import PollCard from "../components/PollCard";
 import { useNavigate } from "react-router-dom";
 
@@ -10,11 +10,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     setLoading(true);
-    fetchPolls()
+    fetchUserPolls()
       .then(setPolls)
       .catch(() => setPolls([]))
       .finally(() => setLoading(false));
   }, []);
+
+  // Show only 2 most recent polls
+  const recentPolls = polls.slice(0, 2);
 
   return (
     <div className="page">
@@ -35,11 +38,24 @@ export default function Dashboard() {
           </button>
         </div>
       ) : (
-        <div className="polls-grid">
-          {polls.map(poll => (
-            <PollCard key={poll.public_id} poll={poll} />
-          ))}
-        </div>
+        <>
+          <div className="polls-grid">
+            {recentPolls.map(poll => (
+              <PollCard key={poll.public_id} poll={poll} />
+            ))}
+          </div>
+
+          {polls.length > 2 && (
+            <div className="view-all-section">
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => navigate("/polls")}
+              >
+                View All Polls ({polls.length})
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

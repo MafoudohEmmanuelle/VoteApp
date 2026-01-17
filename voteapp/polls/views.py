@@ -102,11 +102,18 @@ class PollListView(generics.ListAPIView):
 
     def get_queryset(self):
         user = self.request.user
+        owner_only = self.request.query_params.get('owner', False)
+        
+        # If owner=true parameter is passed and user is authenticated, show only user's polls
+        if owner_only and user.is_authenticated:
+            return Poll.objects.filter(created_by=user).order_by('-created_at')
+        
+        # Otherwise show public polls + user's own polls
         public_qs = Poll.objects.filter(is_public=True)
         if user.is_authenticated:
             own_qs = Poll.objects.filter(created_by=user)
-            return public_qs.union(own_qs)
-        return public_qs
+            return public_qs.union(own_qs).order_by('-created_at')
+        return public_qs.order_by('-created_at')
 
 
 class PollDetailView(generics.RetrieveAPIView):
@@ -196,3 +203,57 @@ class FinalizePollView(APIView):
 
         finalize_poll_results(poll)
         return Response({"message": "Poll results finalized"}, status=status.HTTP_200_OK)
+
+
+class GetPollTokensView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, poll_public_id):
+        poll = get_object_or_404(Poll, public_id=poll_public_id)
+
+        if poll.created_by != request.user:
+            return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        if poll.voting_mode != "restricted":
+            return Response({"error": "Poll is not restricted"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get unused tokens from Redis
+        from polls.redis_client import redis_client
+        allowed_tokens_key = f"poll:{poll.public_id}:allowed_tokens"
+        used_tokens_key = f"poll:{poll.public_id}:used_tokens"
+        
+        all_tokens = redis_client.smembers(allowed_tokens_key)
+        used_tokens = redis_client.smembers(used_tokens_key)
+        
+        tokens = [t.decode() if isinstance(t, bytes) else t for t in all_tokens]
+        used = [t.decode() if isinstance(t, bytes) else t for t in used_tokens]
+
+        return Response({
+            "tokens": tokens,
+            "used_count": len(used),
+            "available_count": len(tokens) - len(used)
+        }, status=status.HTTP_200_OK)
+
+
+class DeletePollView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, poll_public_id):
+        poll = get_object_or_404(Poll, public_id=poll_public_id)
+
+        if poll.created_by != request.user:
+            return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+
+        # Delete from Redis
+        from polls.redis_client import redis_client
+        votes_key = f"poll:{poll.public_id}:votes"
+        voters_key = f"poll:{poll.public_id}:voters"
+        allowed_tokens_key = f"poll:{poll.public_id}:allowed_tokens"
+        used_tokens_key = f"poll:{poll.public_id}:used_tokens"
+
+        redis_client.delete(votes_key, voters_key, allowed_tokens_key, used_tokens_key)
+
+        # Delete from SQLite
+        poll.delete()
+
+        return Response({"message": "Poll deleted successfully"}, status=status.HTTP_204_NO_CONTENT)

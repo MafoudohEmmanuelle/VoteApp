@@ -10,6 +10,8 @@ from polls.views import (
     GenerateVoterTokensView,
     VoteView,
     FinalizePollView,
+    GetPollTokensView,
+    DeletePollView,
 )
 
 urlpatterns = [
@@ -29,8 +31,12 @@ urlpatterns = [
 
     # Restricted voters
     path("polls/<uuid:poll_public_id>/tokens/", GenerateVoterTokensView.as_view(), name="poll-generate-tokens"),
+    path("polls/<uuid:poll_public_id>/get-tokens/", GetPollTokensView.as_view(), name="poll-get-tokens"),
 
     # Finalize poll
     path("polls/<uuid:poll_public_id>/finalize/", FinalizePollView.as_view(), name="poll-finalize"),
+    
+    # Delete poll
+    path("polls/<uuid:poll_public_id>/delete/", DeletePollView.as_view(), name="poll-delete"),
 ]
 

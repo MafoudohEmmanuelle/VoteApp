@@ -23,24 +23,23 @@ def finalize_poll_results(poll: Poll):
     """
     Persist final poll results from Redis into the database.
     Should be called AFTER the poll closes.
+    Called automatically by signal when poll.status changes to 'closed'.
     """
-    poll.update_status()
     if poll.is_open():
         raise ValueError("Poll is still open")
+
+    if hasattr(poll, 'result'):
+        raise ValueError("Poll already finalized")
 
     results = get_poll_results(poll.public_id)
     total_votes = sum(results.values())
 
-    pr, created = PollResult.objects.update_or_create(
+    pr = PollResult.objects.create(
         poll=poll,
-        defaults={
-            "results": results,
-            "total_votes": total_votes
-        }
+        results=results,
+        total_votes=total_votes
     )
 
-    poll.status = "closed"
-    poll.save(update_fields=["status"])
     return pr
 
 # -----------------------------

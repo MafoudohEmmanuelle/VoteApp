@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
+import AllPolls from "./pages/AllPolls";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import CreatePoll from "./pages/CreatePoll";
@@ -23,6 +24,9 @@ function AppContent() {
       <Routes>
         {/* Dashboard (default route - private) */}
         <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+
+        {/* All polls table view (private) */}
+        <Route path="/polls" element={<PrivateRoute><AllPolls /></PrivateRoute>} />
 
         {/* Authentication */}
         <Route path="/login" element={<Login />} />

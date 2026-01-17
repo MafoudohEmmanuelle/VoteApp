@@ -74,7 +74,8 @@ class Poll(models.Model):
         new_status = self.compute_status()
         if new_status != self.status:
             self.status = new_status
-            self.save(update_fields=["status"])
+            # Don't specify update_fields to trigger all post_save handlers
+            self.save()
 
     def is_open(self):
         return self.compute_status() == "open"

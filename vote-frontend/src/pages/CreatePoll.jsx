@@ -5,7 +5,8 @@ export default function CreatePoll() {
   const navigate = useNavigate();
 
   const handlePollCreated = (poll) => {
-    navigate(`/poll/${poll.public_id}`);
+    // Redirect to dashboard to see the poll card with tokens and link
+    navigate("/");
   };
 
   return (
